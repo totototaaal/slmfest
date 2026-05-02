@@ -1,0 +1,15 @@
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
+
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./test.db")
+ALLOWED_IPS = [ip.strip() for ip in os.getenv("ALLOWED_IPS", "194.187.247.152,194.187.245.108,197.187.244.108").split(",") if ip.strip()]
+ACCOUNT_REGEX = os.getenv("ACCOUNT_REGEX", r"^[A-Za-z0-9_.@#\-]{1,200}$")
+HTTPS_HEADER = os.getenv("HTTPS_HEADER", "X-Forwarded-Proto")
+HTTPS_VALUE = os.getenv("HTTPS_VALUE", "https")
+TRUST_PROXY_HEADERS = os.getenv("TRUST_PROXY_HEADERS", "true").strip().lower() in {"1", "true", "yes", "on"}
+SQL_ECHO = os.getenv("SQL_ECHO", "false").strip().lower() in {"1", "true", "yes", "on"}
