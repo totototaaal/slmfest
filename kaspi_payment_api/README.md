@@ -11,6 +11,7 @@ A FastAPI provider interface for Kaspi.kz online payment requests. The service a
 - Request logging and idempotent duplicate `pay` handling by `txn_id`
 - Bank payment date storage from `txn_date` for accounting reconciliation
 - JSON and XML response support
+- POST `/kaspi/create-payment` endpoint for Kaspi quick payment links and QR codes
 
 ## Project structure
 
@@ -55,6 +56,11 @@ ALLOWED_IPS=194.187.247.152,194.187.245.108,197.187.244.108
 ACCOUNT_REGEX=^[A-Za-z0-9_.@#\-]{1,200}$
 TRUST_PROXY_HEADERS=true
 SQL_ECHO=false
+KASPI_FAST_PAYMENT_URL=https://kaspi.kz/online
+KASPI_SERVICE_ID=your-service-id-from-kaspi
+KASPI_RETURN_URL=https://slmfest.kz/payment-success
+KASPI_REFERER_HOST=slmfest.kz
+KASPI_REQUEST_TIMEOUT=15
 ```
 
 3. Run the application:
@@ -82,9 +88,28 @@ GET /payment?command=check&txn_id=1234567&account=4957835959&sum=200.00
 GET /payment?command=pay&txn_id=1234567&account=4957835959&sum=200.00&txn_date=20260501153045
 ```
 
+## Quick payment
+
+Kaspi must provide `KASPI_SERVICE_ID` before real quick-payment requests can be created.
+
+```http
+POST /kaspi/create-payment
+Content-Type: application/json
+
+{
+  "order_id": "ORDER001",
+  "amount": 100000,
+  "generate_qr_code": false
+}
+```
+
+`amount` is sent to Kaspi as tiyn. The API stores the order, creates or updates the matching `accounts` row for later `check/pay`, sends the JSON request to Kaspi, and returns the saved `redirect_url` or `qr_code_image`.
+
+For QR mode, pass `"generate_qr_code": true`.
+
 ## Order synchronization
 
-Create an `accounts` row when the ticket order is created on your site. Use `account` as the unique order identifier passed to Kaspi, `balance_due` as the exact amount to pay, and `status='active'` while the order is payable.
+Create an `accounts` row when the ticket order is created on your site, or let `/kaspi/create-payment` create it automatically. Use `account` as the unique order identifier passed to Kaspi, `balance_due` as the exact amount to pay in tenge, and `status='active'` while the order is payable.
 
 Optional display data for Kaspi can be saved in `accounts.extra_fields` as JSON with keys like `field1`, `field2`, etc. These keys are returned in successful `check` responses under the protocol's `fields` object.
 

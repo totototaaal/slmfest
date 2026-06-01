@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 import re
 from typing import Any, Dict, Optional
@@ -144,6 +144,10 @@ class KaspiProcessor:
             new_payment.prv_txn = new_payment.id
             account.balance_due = Decimal("0.00")
             account.status = "paid"
+            order = self.db.query(models.Order).filter(models.Order.order_id == account.account).one_or_none()
+            if order:
+                order.status = "paid"
+                order.paid_at = datetime.now(timezone.utc)
             self.db.commit()
             self.db.refresh(new_payment)
         except IntegrityError:

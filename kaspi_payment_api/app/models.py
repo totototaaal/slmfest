@@ -30,6 +30,25 @@ class Payment(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
+class Order(Base):
+    __tablename__ = "orders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tran_id = Column(String(64), unique=True, nullable=False, index=True)
+    order_id = Column(String(16), unique=True, nullable=False, index=True)
+    amount = Column(BigInteger, nullable=False)
+    status = Column(String(20), nullable=False, default="created")
+    redirect_url = Column(Text, nullable=True)
+    qr_code_image = Column(Text, nullable=True)
+    return_url = Column(Text, nullable=True)
+    referer_host = Column(String(1024), nullable=True)
+    kaspi_code = Column(Integer, nullable=True)
+    kaspi_message = Column(Text, nullable=True)
+    kaspi_response = Column(JSON, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    paid_at = Column(DateTime(timezone=True), nullable=True)
+
+
 class RequestLog(Base):
     __tablename__ = "request_logs"
 
