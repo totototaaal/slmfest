@@ -96,9 +96,15 @@ def create_fast_payment(db: Session, payload: schemas.CreatePaymentRequest) -> m
             detail=order.kaspi_message or "Kaspi returned an error",
         )
 
-    if not order.redirect_url and not order.qr_code_image:
+    if payload.generate_qr_code and not order.qr_code_image:
         order.status = "failed"
-        order.kaspi_message = "Kaspi response does not contain redirectUrl or qrCodeImage"
+        order.kaspi_message = "Kaspi response does not contain qrCodeImage"
+        db.commit()
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=order.kaspi_message)
+
+    if not payload.generate_qr_code and not order.redirect_url:
+        order.status = "failed"
+        order.kaspi_message = "Kaspi response does not contain redirectUrl"
         db.commit()
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=order.kaspi_message)
 
