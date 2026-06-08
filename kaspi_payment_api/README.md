@@ -56,8 +56,8 @@ ALLOWED_IPS=194.187.247.152,194.187.245.108,197.187.244.108
 ACCOUNT_REGEX=^[A-Za-z0-9_.@#\-]{1,200}$
 TRUST_PROXY_HEADERS=true
 SQL_ECHO=false
-KASPI_FAST_PAYMENT_URL=https://kaspi.kz/online
-KASPI_SERVICE_ID=SLMFest
+KASPI_ONLINE_URL=https://kaspi.kz/online
+KASPI_SERVICE_ID=
 KASPI_RETURN_URL=https://slmfest.kz/payment-success
 KASPI_REFERER_HOST=slmfest.kz
 KASPI_REQUEST_TIMEOUT=15
@@ -90,7 +90,7 @@ GET /payment?command=pay&txn_id=1234567&account=4957835959&sum=200.00&txn_date=2
 
 ## Quick payment
 
-Kaspi quick-payment requests use `KASPI_SERVICE_ID=SLMFest`.
+Kaspi must provide `KASPI_SERVICE_ID` before real quick-payment requests can be created.
 
 ```http
 POST /kaspi/create-payment
@@ -106,6 +106,37 @@ Content-Type: application/json
 `amount` is sent to Kaspi as tiyn. The API stores the order, creates or updates the matching `accounts` row for later `check/pay`, sends the JSON request to Kaspi, and returns the saved `redirect_url` or `qr_code_image`.
 
 For QR mode, pass `"generate_qr_code": true`.
+
+## Quick payment test page
+
+Open the test page in a browser:
+
+```text
+https://api.slmfest.kz/quick-payment/test-page
+```
+
+Enter an order and amount, for example:
+
+```text
+order_id: TEST001
+amount_tenge: 1000
+```
+
+After clicking `Оплатить через Kaspi`, the browser posts the values to `/quick-payment/build-form`. The backend creates a `quick_payment_orders` log row, creates or updates the matching payable `accounts` row, converts the amount from tenge to tiyn, and returns an auto-submit form to Kaspi.
+
+The form sent to Kaspi contains:
+
+```text
+TranId=<order_id>-<timestamp>-<uuid>
+OrderId=<order_id>
+Amount=<amount_tenge * 100>
+Service=<KASPI_SERVICE_ID>
+returnUrl=<KASPI_RETURN_URL>?order_id=<order_id>
+```
+
+For `amount_tenge=1000`, `Amount` is sent as `100000` tiyn.
+
+The payment is considered confirmed only after Kaspi calls the existing `/payment` endpoint with `check` and `pay`. Do not add API keys to `/payment`; it remains protected by the existing HTTPS and IP allowlist checks.
 
 ## Order synchronization
 

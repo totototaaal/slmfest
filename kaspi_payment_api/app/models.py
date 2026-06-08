@@ -49,6 +49,20 @@ class Order(Base):
     paid_at = Column(DateTime(timezone=True), nullable=True)
 
 
+class QuickPaymentOrder(Base):
+    __tablename__ = "quick_payment_orders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tran_id = Column(String(64), unique=True, nullable=False, index=True)
+    order_id = Column(String(16), nullable=False, index=True)
+    amount_tenge = Column(Numeric(12, 2), nullable=False)
+    amount_tiyin = Column(BigInteger, nullable=False)
+    service = Column(String(64), nullable=False)
+    return_url = Column(Text, nullable=False)
+    status = Column(String(20), nullable=False, default="created")
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
 class RequestLog(Base):
     __tablename__ = "request_logs"
 

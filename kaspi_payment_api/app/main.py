@@ -1,11 +1,13 @@
-from fastapi import Depends, FastAPI, Request
+from html import escape
+
+from fastapi import Depends, FastAPI, Form, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 
 from . import models, schemas
 from .database import SessionLocal, engine
 from .kaspi import KaspiProcessor
-from .quick_payment import create_fast_payment
+from .quick_payment import build_kaspi_form, build_quick_payment_test_page, create_fast_payment
 from .security import validate_https, validate_request_origin
 
 models.Base.metadata.create_all(bind=engine)
@@ -36,15 +38,30 @@ async def create_payment(payload: schemas.CreatePaymentRequest, db: Session = De
     return create_fast_payment(db, payload)
 
 
+@app.get("/quick-payment/test-page", response_class=HTMLResponse)
+async def quick_payment_test_page():
+    return build_quick_payment_test_page()
+
+
+@app.post("/quick-payment/build-form", response_class=HTMLResponse)
+async def quick_payment_build_form(
+    order_id: str = Form(...),
+    amount_tenge: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    return build_kaspi_form(db, order_id, amount_tenge)
+
+
 @app.get("/payment-success", response_class=HTMLResponse)
-async def payment_success():
-    return """
+async def payment_success(request: Request):
+    order_id = escape(request.query_params.get("order_id", ""), quote=True) or "не указан"
+    return f"""
 <!doctype html>
 <html lang="ru">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Оплата принята</title>
+  <title>Оплата завершена</title>
   <style>
     body {
       margin: 0;
@@ -73,8 +90,8 @@ async def payment_success():
 </head>
 <body>
   <main>
-    <h1>Оплата принята</h1>
-    <p>Спасибо. Статус заказа обновится после подтверждения платежа Kaspi.</p>
+    <h1>Оплата завершена.</h1>
+    <p>Order ID: {order_id}</p>
   </main>
 </body>
 </html>
