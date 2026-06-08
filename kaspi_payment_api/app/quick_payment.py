@@ -122,9 +122,9 @@ def create_fast_payment(db: Session, payload: schemas.CreatePaymentRequest) -> m
 
 
 def build_quick_payment_test_page() -> str:
-        # Modern responsive test page. Uses fetch(JSON) to call /kaspi/create-payment
-        # and handles both HTML (auto-submit form) and JSON (redirectUrl) responses.
-        return """
+    # Modern responsive test page. Uses a plain HTML form POST to /quick-payment/build-form
+    # so the backend (which calls Kaspi) runs server-side and returns the auto-submit form.
+    return """
 <!doctype html>
 <html lang="ru">
 <head>
@@ -157,7 +157,7 @@ def build_quick_payment_test_page() -> str:
 
             <div id="error" style="display:none" class="error" role="alert"></div>
 
-            <form id="testForm">
+            <form id="testForm" method="post" action="/quick-payment/build-form">
                 <div class="field">
                     <label for="order_id">Order ID</label>
                     <input id="order_id" name="order_id" type="text" maxlength="16" value="TEST001" required>
@@ -169,76 +169,13 @@ def build_quick_payment_test_page() -> str:
                 </div>
 
                 <div class="actions">
-                    <button id="payBtn" class="primary" type="submit">Оплатить через Kaspi</button>
+                    <button class="primary" type="submit">Оплатить через Kaspi</button>
                 </div>
 
                 <p class="info">TranId будет создан автоматически. Сумма отправляется в тиын. После оплаты произойдет возврат на <strong>/payment-success</strong>.</p>
             </form>
         </main>
     </div>
-
-    <script>
-        (function(){
-            const form = document.getElementById('testForm');
-            const btn = document.getElementById('payBtn');
-            const errEl = document.getElementById('error');
-
-            function showError(msg){ errEl.style.display = 'block'; errEl.textContent = msg; }
-            function clearError(){ errEl.style.display='none'; errEl.textContent=''; }
-
-            form.addEventListener('submit', async function(e){
-                e.preventDefault();
-                clearError();
-                btn.disabled = true;
-                const orderId = document.getElementById('order_id').value.trim();
-                const amountTengeRaw = document.getElementById('amount').value.trim();
-                if(!orderId || !amountTengeRaw){ showError('Заполните все поля'); btn.disabled=false; return; }
-
-                const amountTenge = Number(amountTengeRaw.toString().replace(',', '.'));
-                if(Number.isNaN(amountTenge) || amountTenge <= 0){ showError('Неверная сумма'); btn.disabled=false; return; }
-                const amountTiyn = Math.round(amountTenge * 100);
-
-                const payload = { order_id: orderId, amount: amountTiyn, generate_qr_code: false };
-
-                try{
-                    const resp = await fetch('/kaspi/create-payment', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Accept': 'text/html, application/json' },
-                        body: JSON.stringify(payload),
-                        credentials: 'same-origin'
-                    });
-
-                    const contentType = resp.headers.get('content-type') || '';
-                    if(!resp.ok){
-                        if(contentType.includes('application/json')){
-                            const data = await resp.json().catch(()=>null);
-                            showError(data && (data.detail || data.message) ? (data.detail||data.message) : JSON.stringify(data));
-                        } else {
-                            const text = await resp.text().catch(()=>null);
-                            showError(text ? text.substring(0,1000) : 'Ошибка сервера');
-                        }
-                        btn.disabled = false;
-                        return;
-                    }
-
-                    if(contentType.includes('text/html')){
-                        const html = await resp.text();
-                        document.open(); document.write(html); document.close(); return;
-                    }
-
-                    if(contentType.includes('application/json')){
-                        const data = await resp.json();
-                        if(data && data.redirectUrl){ window.location.href = data.redirectUrl; return; }
-                        showError('Unexpected response: ' + JSON.stringify(data)); btn.disabled = false; return;
-                    }
-
-                    const text = await resp.text();
-                    if(text){ document.open(); document.write(text); document.close(); } else { showError('Неизвестный ответ от сервера'); }
-
-                }catch(err){ showError(err && err.message ? err.message : String(err)); btn.disabled = false; }
-            });
-        })();
-    </script>
 </body>
 </html>
 """
