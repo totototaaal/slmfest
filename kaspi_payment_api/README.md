@@ -57,7 +57,7 @@ ACCOUNT_REGEX=^[A-Za-z0-9_.@#\-]{1,200}$
 TRUST_PROXY_HEADERS=true
 SQL_ECHO=false
 KASPI_FAST_PAYMENT_URL=https://kaspi.kz/online
-KASPI_SERVICE_ID=your-service-id-from-kaspi
+KASPI_SERVICE_ID=SLMFest
 KASPI_RETURN_URL=https://slmfest.kz/payment-success
 KASPI_REFERER_HOST=slmfest.kz
 KASPI_REQUEST_TIMEOUT=15
@@ -90,7 +90,7 @@ GET /payment?command=pay&txn_id=1234567&account=4957835959&sum=200.00&txn_date=2
 
 ## Quick payment
 
-Kaspi must provide `KASPI_SERVICE_ID` before real quick-payment requests can be created.
+Kaspi quick-payment requests use `KASPI_SERVICE_ID=SLMFest`.
 
 ```http
 POST /kaspi/create-payment
