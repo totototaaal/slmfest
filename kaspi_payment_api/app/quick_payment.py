@@ -122,80 +122,123 @@ def create_fast_payment(db: Session, payload: schemas.CreatePaymentRequest) -> m
 
 
 def build_quick_payment_test_page() -> str:
-    return f"""
+        # Modern responsive test page. Uses fetch(JSON) to call /kaspi/create-payment
+        # and handles both HTML (auto-submit form) and JSON (redirectUrl) responses.
+        return """
 <!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Тест Kaspi Быстрая оплата</title>
-  <style>
-    body {{
-      margin: 0;
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      font-family: Arial, sans-serif;
-      background: #f6f7f9;
-      color: #1f2933;
-    }}
-    main {{
-      width: min(460px, calc(100% - 32px));
-    }}
-    form {{
-      display: grid;
-      gap: 14px;
-      padding: 24px;
-      border: 1px solid #d8dee6;
-      border-radius: 8px;
-      background: #fff;
-    }}
-    h1 {{
-      margin: 0 0 6px;
-      font-size: 24px;
-      line-height: 1.25;
-    }}
-    label {{
-      display: grid;
-      gap: 6px;
-      font-size: 14px;
-      font-weight: 700;
-    }}
-    input {{
-      box-sizing: border-box;
-      width: 100%;
-      padding: 10px 12px;
-      border: 1px solid #b8c2cc;
-      border-radius: 6px;
-      font: inherit;
-    }}
-    button {{
-      min-height: 44px;
-      border: 0;
-      border-radius: 6px;
-      background: #d71920;
-      color: #fff;
-      font: inherit;
-      font-weight: 700;
-      cursor: pointer;
-    }}
-  </style>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Тестирование Kaspi Быстрая оплата</title>
+    <style>
+        :root { --bg: #ffffff; --muted: #6b7280; --border: #e6edf3; --input: #f8fafc; --blue: #0b69ff; }
+        html,body { height:100%; margin:0; padding:0; font-family: Inter, system-ui, Arial, sans-serif; background:#f6f7f9; color:#0f1724 }
+        .wrap { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px }
+        .card { width:100%; max-width:450px; background:var(--bg); border-radius:12px; box-shadow:0 8px 30px rgba(15,23,36,0.08); padding:26px; border:1px solid var(--border) }
+        h1 { margin:0 0 8px; font-size:20px; color:#0f1724 }
+        p.lead { margin:0 0 16px; color:var(--muted); font-size:14px }
+        label { display:block; font-size:13px; color:#111827; margin-bottom:8px; font-weight:600 }
+        .field { display:flex; flex-direction:column; gap:8px; margin-bottom:12px }
+        input[type=text], input[type=number] { width:100%; padding:12px 14px; border:1px solid #d1d9e3; background:var(--input); border-radius:8px; font-size:15px; outline:none }
+        input:focus { box-shadow:0 0 0 4px rgba(11,105,255,0.08); border-color:var(--blue) }
+        .actions { display:flex; gap:12px; align-items:center; margin-top:8px }
+        button.primary { background:var(--blue); color:#fff; border:0; padding:12px 16px; border-radius:8px; font-weight:700; cursor:pointer; flex:1 }
+        .info { font-size:13px; color:var(--muted); margin-top:12px }
+        .error { background:#fff5f5; border:1px solid #fecaca; color:#7f1d1d; padding:10px; border-radius:8px; margin-bottom:12px }
+        @media (max-width:420px) { .card { padding:18px; border-radius:10px } h1 { font-size:18px } }
+    </style>
 </head>
 <body>
-  <main>
-    <form action="/quick-payment/build-form" method="post">
-      <h1>Тест Kaspi Быстрая оплата</h1>
-      <label>
-        order_id
-        <input name="order_id" value="TEST001" maxlength="16" required>
-      </label>
-      <label>
-        amount_tenge
-        <input name="amount_tenge" value="1000" type="number" min="1" step="0.01" required>
-      </label>
-      <button type="submit">Оплатить через Kaspi</button>
-    </form>
-  </main>
+    <div class="wrap">
+        <main class="card" role="main">
+            <h1>Тестирование Kaspi Быстрая оплата</h1>
+            <p class="lead">Удобная страница для ручной проверки интеграции Kaspi Fast Payment.</p>
+
+            <div id="error" style="display:none" class="error" role="alert"></div>
+
+            <form id="testForm">
+                <div class="field">
+                    <label for="order_id">Order ID</label>
+                    <input id="order_id" name="order_id" type="text" maxlength="16" value="TEST001" required>
+                </div>
+
+                <div class="field">
+                    <label for="amount">Amount (тенге)</label>
+                    <input id="amount" name="amount_tenge" type="number" min="1" step="0.01" value="1000" required>
+                </div>
+
+                <div class="actions">
+                    <button id="payBtn" class="primary" type="submit">Оплатить через Kaspi</button>
+                </div>
+
+                <p class="info">TranId будет создан автоматически. Сумма отправляется в тиын. После оплаты произойдет возврат на <strong>/payment-success</strong>.</p>
+            </form>
+        </main>
+    </div>
+
+    <script>
+        (function(){
+            const form = document.getElementById('testForm');
+            const btn = document.getElementById('payBtn');
+            const errEl = document.getElementById('error');
+
+            function showError(msg){ errEl.style.display = 'block'; errEl.textContent = msg; }
+            function clearError(){ errEl.style.display='none'; errEl.textContent=''; }
+
+            form.addEventListener('submit', async function(e){
+                e.preventDefault();
+                clearError();
+                btn.disabled = true;
+                const orderId = document.getElementById('order_id').value.trim();
+                const amountTengeRaw = document.getElementById('amount').value.trim();
+                if(!orderId || !amountTengeRaw){ showError('Заполните все поля'); btn.disabled=false; return; }
+
+                const amountTenge = Number(amountTengeRaw.toString().replace(',', '.'));
+                if(Number.isNaN(amountTenge) || amountTenge <= 0){ showError('Неверная сумма'); btn.disabled=false; return; }
+                const amountTiyn = Math.round(amountTenge * 100);
+
+                const payload = { order_id: orderId, amount: amountTiyn, generate_qr_code: false };
+
+                try{
+                    const resp = await fetch('/kaspi/create-payment', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'text/html, application/json' },
+                        body: JSON.stringify(payload),
+                        credentials: 'same-origin'
+                    });
+
+                    const contentType = resp.headers.get('content-type') || '';
+                    if(!resp.ok){
+                        if(contentType.includes('application/json')){
+                            const data = await resp.json().catch(()=>null);
+                            showError(data && (data.detail || data.message) ? (data.detail||data.message) : JSON.stringify(data));
+                        } else {
+                            const text = await resp.text().catch(()=>null);
+                            showError(text ? text.substring(0,1000) : 'Ошибка сервера');
+                        }
+                        btn.disabled = false;
+                        return;
+                    }
+
+                    if(contentType.includes('text/html')){
+                        const html = await resp.text();
+                        document.open(); document.write(html); document.close(); return;
+                    }
+
+                    if(contentType.includes('application/json')){
+                        const data = await resp.json();
+                        if(data && data.redirectUrl){ window.location.href = data.redirectUrl; return; }
+                        showError('Unexpected response: ' + JSON.stringify(data)); btn.disabled = false; return;
+                    }
+
+                    const text = await resp.text();
+                    if(text){ document.open(); document.write(text); document.close(); } else { showError('Неизвестный ответ от сервера'); }
+
+                }catch(err){ showError(err && err.message ? err.message : String(err)); btn.disabled = false; }
+            });
+        })();
+    </script>
 </body>
 </html>
 """
