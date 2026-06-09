@@ -229,6 +229,8 @@ def build_kaspi_form(db: Session, order_id: str, amount_tenge_raw: str) -> str:
         "Amount": str(amount_tiyin),
         "Service": service,
         "returnUrl": return_url,
+        # Include refererHost in the HTML form as some Kaspi flows expect it.
+        "refererHost": KASPI_REFERER_HOST,
     }
     # Safe logging of parameters that will be submitted to Kaspi via browser
     logger.info(
