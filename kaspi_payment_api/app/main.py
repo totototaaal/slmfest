@@ -52,6 +52,30 @@ async def quick_payment_build_form(
     return build_kaspi_form(db, order_id, amount_tenge)
 
 
+@app.get("/quick-payment/debug-last")
+async def quick_payment_debug_last(db: Session = Depends(get_db)):
+  rows = (
+    db.query(models.QuickPaymentOrder)
+    .order_by(models.QuickPaymentOrder.created_at.desc())
+    .limit(5)
+    .all()
+  )
+  result = []
+  for r in rows:
+    result.append(
+      {
+        "tran_id": r.tran_id,
+        "order_id": r.order_id,
+        "amount_tiyin": int(r.amount_tiyin) if r.amount_tiyin is not None else None,
+        "service": r.service,
+        "return_url": r.return_url,
+        "status": r.status,
+        "created_at": r.created_at.isoformat() if r.created_at else None,
+      }
+    )
+  return result
+
+
 @app.get("/payment-success", response_class=HTMLResponse)
 async def payment_success(request: Request):
     order_id = escape(request.query_params.get("order_id", ""), quote=True) or "не указан"

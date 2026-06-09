@@ -6,6 +6,7 @@ from typing import Any, Dict
 from urllib import error, request
 from urllib.parse import urlencode
 from uuid import uuid4
+import logging
 
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
@@ -23,6 +24,8 @@ from .config import (
 from .security import validate_account
 
 TIYIN_PER_TENGE = Decimal("100")
+
+logger = logging.getLogger("kaspi.quick_payment")
 
 
 def create_fast_payment(db: Session, payload: schemas.CreatePaymentRequest) -> models.Order:
@@ -82,6 +85,18 @@ def create_fast_payment(db: Session, payload: schemas.CreatePaymentRequest) -> m
         kaspi_payload["GenerateQrCode"] = True
 
     try:
+        # Safe logging of parameters sent to Kaspi (no secrets)
+        logger.info(
+            "Calling Kaspi fast API",
+            extra={
+                "tran_id": order.tran_id,
+                "order_id": order.order_id,
+                "amount_tiyin": order.amount,
+                "service": KASPI_SERVICE_ID,
+                "return_url": order.return_url,
+                "target_url": KASPI_FAST_PAYMENT_URL,
+            },
+        )
         kaspi_response = _post_json(kaspi_payload)
     except RuntimeError as exc:
         order.status = "failed"
@@ -215,6 +230,18 @@ def build_kaspi_form(db: Session, order_id: str, amount_tenge_raw: str) -> str:
         "Service": service,
         "returnUrl": return_url,
     }
+    # Safe logging of parameters that will be submitted to Kaspi via browser
+    logger.info(
+        "Preparing Kaspi online form",
+        extra={
+            "tran_id": tran_id,
+            "order_id": cleaned_order_id,
+            "amount_tiyin": amount_tiyin,
+            "service": service,
+            "return_url": return_url,
+            "target_url": KASPI_ONLINE_URL,
+        },
+    )
     return _auto_submit_form(KASPI_ONLINE_URL, fields)
 
 
