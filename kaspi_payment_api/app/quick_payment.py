@@ -78,8 +78,8 @@ def create_fast_payment(db: Session, payload: schemas.CreatePaymentRequest) -> m
         "OrderId": order.order_id,
         "Amount": order.amount,
         "Service": KASPI_SERVICE_ID,
-        "returnUrl": order.return_url,
-        "refererHost": order.referer_host,
+        "ReturnUrl": order.return_url,
+        "RefererHost": order.referer_host,
     }
     if payload.generate_qr_code:
         kaspi_payload["GenerateQrCode"] = True
@@ -228,9 +228,9 @@ def build_kaspi_form(db: Session, order_id: str, amount_tenge_raw: str) -> str:
         "OrderId": cleaned_order_id,
         "Amount": str(amount_tiyin),
         "Service": service,
-        "returnUrl": return_url,
-        # Include refererHost in the HTML form as some Kaspi flows expect it.
-        "refererHost": KASPI_REFERER_HOST,
+        "ReturnUrl": return_url,
+        # Include RefererHost in the HTML form as some Kaspi flows expect it.
+        "RefererHost": KASPI_REFERER_HOST,
     }
     # Safe logging of parameters that will be submitted to Kaspi via browser
     logger.info(
